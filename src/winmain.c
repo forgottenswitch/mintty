@@ -33,6 +33,9 @@
 #include <propkey.h>
 #endif
 
+#include "res.h"
+#include "launcher.h"
+
 
 char * home;
 char * cmd;
@@ -2548,6 +2551,8 @@ main(int argc, char *argv[])
     }
   }
 
+  launcher_icon = large_icon ?: LoadIcon(inst, MAKEINTRESOURCE(IDI_MAINICON));
+
   // The window class.
   class_atom = RegisterClassExW(&(WNDCLASSEXW){
     .cbSize = sizeof(WNDCLASSEXW),
@@ -2556,14 +2561,13 @@ main(int argc, char *argv[])
     .cbClsExtra = 0,
     .cbWndExtra = 0,
     .hInstance = inst,
-    .hIcon = large_icon ?: LoadIcon(inst, MAKEINTRESOURCE(IDI_MAINICON)),
+    .hIcon = launcher_icon,
     .hIconSm = small_icon,
     .hCursor = LoadCursor(null, IDC_IBEAM),
     .hbrBackground = null,
     .lpszMenuName = null,
     .lpszClassName = wclass,
   });
-
 
   // Initialise the fonts, thus also determining their width and height.
   win_init_fonts(cfg.font.size);
@@ -2772,10 +2776,28 @@ main(int argc, char *argv[])
 #endif
   }
 
-  // Create child process.
-  child_create(
-    argv, &(struct winsize){term_rows, term_cols, term_width, term_height}
-  );
+  {
+    char **argv1 = argv;
+
+    if (argc == 1) {
+      launcher_init(&argv1);
+      DialogBox(inst, MAKEINTRESOURCE(IDD_LAUNCHER), NULL, (DLGPROC)launcher_dlgproc);
+      if (launcher_cancelled) {
+        exit(1);
+      }
+      launcher_setup_env();
+      launcher_setup_argv();
+    }
+
+    // Create child process.
+    child_create(
+      argv1, &(struct winsize){term_rows, term_cols, term_width, term_height}
+    );
+
+    if (argc == 1) {
+      launcher_free();
+    }
+  }
 
   // Finally show the window!
   go_fullscr_on_max = (cfg.window == -1);
