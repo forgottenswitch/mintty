@@ -23,3 +23,7 @@
 //#define DIALOG_FONT "Trebuchet MS"
 //#define DIALOG_FONT "Lucida Sans Unicode"
 
+#define IDD_LAUNCHER         0x100
+#define IDD_MSYS2_BTN        0x101
+#define IDD_MINGW32_BTN      0x102
+#define IDD_MINGW64_BTN      0x103

@@ -10,7 +10,7 @@
 #define BUILD_NUMBER   0
 
 // needed for res.rc
-#define APPDESC "Terminal"
+#define APPDESC "MSYS2 terminal"
 #define AUTHOR  "Andy Koppe / Thomas Wolff"
 #define YEAR    "2013/2016"
 
