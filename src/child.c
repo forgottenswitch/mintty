@@ -813,6 +813,8 @@ child_fork(int argc, char *argv[], int moni)
     // propagate shortcut-inherited icon
     if (icon_is_from_shortcut)
       setenv("MINTTY_ICON", cs__wcstoutf(cfg.icon), true);
+    // tell alt-f2 mintty instance that it is such one
+    setenv("MINTTY_IS_CHILD", "1", 1);
 
     //setenv("MINTTY_CHILD", "1", true);
 

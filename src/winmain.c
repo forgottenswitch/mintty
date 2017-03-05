@@ -2194,6 +2194,12 @@ opts[] = {
   {0, 0, 0, 0}
 };
 
+static int getenvi(const char *varname) {
+  char *s = getenv(varname);
+  if (s == NULL) { return 0; }
+  return atoi(s);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -2804,6 +2810,13 @@ main(int argc, char *argv[])
       }
       launcher_setup_env();
       launcher_setup_argv();
+    }
+    // Ask /etc/post-install/05-home-dir.post not to "cd ~/" in an Alt-F2 window
+    {
+      if (getenvi("MINTTY_IS_CHILD")) {
+        setenv("CHERE_INVOKING", "1", true);
+      }
+      unsetenv("MINTTY_IS_CHILD");
     }
 
     // Create child process.
