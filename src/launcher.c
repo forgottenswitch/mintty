@@ -130,7 +130,7 @@ static void launcher_add_line_to_combo_box(HWND hwnd, const char *text) {
 
 static void launcher_select_line_in_combo_box(HWND hwnd, const char *text) {
   (void) text;
-  WPARAM n = 1;
+  WPARAM n = shells_n - 1;
   SendMessage(hwnd, CB_SETCURSEL, n, 0);
 }
 
@@ -138,16 +138,35 @@ static HWND etc_shells;
 
 static void launcher_add_shells(HWND dialog) {
   size_t i;
+  FILE *f;
+  char line[1024];
 
-  shells[0] = strdup("/bin/bash");
-  shells[1] = strdup("/bin/dash");
-  shells_n = 2;
+  f = fopen("/etc/shells", "r");
+  if (!f) {
+    shells[0] = strdup("/usr/bin/sh");
+    shells_n = 1;
+  } else {
+    while ( fgets(line, sizeof line, f) != NULL ) {
+      char *s = line;
+      char *s1;
+      while (*s == ' ' || *s == '\t') { s++; }
+      if (*s == '#' || *s == '\r' || *s == '\n' || *s == '\0') { continue; }
+      while ((s1 = strrchr(s, '\r')) || (s1 = strrchr(s, '\n'))) { *s1 = '\0'; }
+      shells[shells_n] = strdup(s);
+      shells_n++;
+      if (shells_n >= shells_sz) {
+        shells_sz *= 2;
+        shells = renewn(shells, sizeof(char*) * shells_sz);
+      }
+    }
+    fclose(f);
+  }
 
   etc_shells = GetDlgItem(dialog, IDD_ETC_SHELLS);
   for (i = 0; i < shells_n; i++) {
     launcher_add_line_to_combo_box(etc_shells, shells[i]);
   }
-  launcher_select_line_in_combo_box(etc_shells, shells[1]);
+  launcher_select_line_in_combo_box(etc_shells, shells[0]);
 }
 
 HICON launcher_icon;
