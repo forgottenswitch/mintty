@@ -101,7 +101,9 @@ static void launcher_add_line_to_combo_box(HWND hwnd, const char *text) {
 }
 
 static void launcher_select_line_in_combo_box(HWND hwnd, const char *text) {
-  SendMessage(hwnd, CB_SELECTSTRING, 0, (LPARAM) text);
+  (void) text;
+  WPARAM n = 1;
+  SendMessage(hwnd, CB_SETCURSEL, n, 0);
 }
 
 static HWND etc_shells;
