@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include "res.h"
+#include "std.h"
 #include "win.h"
 
 #define INSIDE_LAUNCHER
@@ -10,15 +11,32 @@ static char ***ret_argv_addr;
 
 int launcher_cancelled = 0;
 
+static char **shells;
+size_t shells_sz = 4;
+size_t shells_n = 0;
+
+static char *launcher_argv[2] = {
+  NULL, NULL
+};
+
 void launcher_init(char ***argv_addr) {
   ret_argv_addr = argv_addr;
+  shells = newn(char*, shells_sz);
 }
 
 void launcher_free(void) {
-  return;
+  size_t i;
+  for (i = 0; i < shells_n; i++) {
+    free(shells[i]);
+  }
+  free(shells);
+  if (launcher_argv[0]) {
+    free(launcher_argv[0]);
+  }
 }
 
 static int selected_btn = IDD_MSYS2_BTN;
+static int selected_exe = 0;
 
 void launcher_setup_env(void) {
   switch (selected_btn) {
@@ -35,17 +53,27 @@ void launcher_setup_env(void) {
   return;
 }
 
-static char *bash_cmd[] = {
-  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
-  "-bash", NULL
-};
-
 void launcher_setup_argv(void) {
+  const char *cmdname;
+
   /* Global variable from winmain.c, used to pass the filepath to execute to
    * child_create() from main() ("Work out what to execute."). */
-  cmd = "/usr/bin/bash";
+  cmd = shells[selected_exe];
 
-  *ret_argv_addr = bash_cmd;
+  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+  cmdname = strrchr(cmd, '/');
+  if (cmdname == NULL) {
+    cmdname = cmd;
+  } else {
+    cmdname += 1;
+  }
+  if (launcher_argv[0]) {
+    free(launcher_argv[0]);
+  }
+  launcher_argv[0] = asform("-%s", cmdname);
+  launcher_argv[1] = NULL;
+
+  *ret_argv_addr = launcher_argv;
 }
 
 static void launcher_add_tooltip_to_window(HWND hwnd, char *text) {
@@ -109,15 +137,21 @@ static void launcher_select_line_in_combo_box(HWND hwnd, const char *text) {
 static HWND etc_shells;
 
 static void launcher_add_shells(HWND dialog) {
+  size_t i;
+
+  shells[0] = strdup("/bin/bash");
+  shells[1] = strdup("/bin/dash");
+  shells_n = 2;
+
   etc_shells = GetDlgItem(dialog, IDD_ETC_SHELLS);
-  launcher_add_line_to_combo_box(etc_shells, "/bin/bash");
-  launcher_add_line_to_combo_box(etc_shells, "/bin/bash2");
-  launcher_select_line_in_combo_box(etc_shells, "/bin/bash");
+  for (i = 0; i < shells_n; i++) {
+    launcher_add_line_to_combo_box(etc_shells, shells[i]);
+  }
+  launcher_select_line_in_combo_box(etc_shells, shells[1]);
 }
 
 HICON launcher_icon;
 
-#include <stdio.h>
 INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   (void) lParam;
 
@@ -131,7 +165,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     case IDD_MSYS2_BTN:
     case IDD_MINGW32_BTN:
     case IDD_MINGW64_BTN:
-      printf("cursel is %d\n", (int)SendMessage(etc_shells, CB_GETCURSEL, 0, 0));
+      selected_exe = SendMessage(etc_shells, CB_GETCURSEL, 0, 0);
       DestroyWindow(hwnd);
       selected_btn = LOWORD(wParam);
       return TRUE;
