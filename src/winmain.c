@@ -108,6 +108,11 @@ static HRESULT (WINAPI * pDwmIsCompositionEnabled)(BOOL *) = 0;
 static HRESULT (WINAPI * pDwmExtendFrameIntoClientArea)(HWND, const MARGINS *) = 0;
 static HRESULT (WINAPI * pDwmEnableBlurBehindWindow)(HWND, void *) = 0;
 
+// Must only be called after the 'home' is set.
+char* get_xdg_dir(void) {
+  return asform("%s/.config/mintty", home);
+}
+
 // Helper for loading a system library. Using LoadLibrary() directly is insecure
 // because Windows might be searching the current working directory first.
 static HMODULE
@@ -2259,9 +2264,11 @@ main(int argc, char *argv[])
     delete(rc_file);
   }
   // try XDG config base directory default location (#525)
-  string rc_file = asform("%s/.config/mintty/config", home);
+  string rc_xdgdir = get_xdg_dir();
+  string rc_file = asform("%s/config", rc_xdgdir);
   load_config(rc_file, true);
   delete(rc_file);
+  delete(rc_xdgdir);
   // try home config file
   rc_file = asform("%s/.minttyrc", home);
   load_config(rc_file, true);
@@ -2810,6 +2817,7 @@ main(int argc, char *argv[])
       }
       launcher_setup_env();
       launcher_setup_argv();
+      launcher_save_prefs();
     }
     // Ask /etc/post-install/05-home-dir.post not to "cd ~/" in an Alt-F2 window
     {

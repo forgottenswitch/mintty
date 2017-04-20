@@ -27,3 +27,5 @@
 #define IDD_MSYS2_BTN        0x101
 #define IDD_MINGW32_BTN      0x102
 #define IDD_MINGW64_BTN      0x103
+#define IDD_COMM_INTERP      0x104
+#define IDD_ETC_SHELLS       0x105

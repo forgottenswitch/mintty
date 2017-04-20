@@ -1,6 +1,12 @@
 #include <windows.h>
 #include <commctrl.h>
+
+#include <sys/cygwin.h>
+#include <sys/stat.h>
+#include <pwd.h>
+
 #include "res.h"
+#include "std.h"
 #include "win.h"
 
 #define INSIDE_LAUNCHER
@@ -10,15 +16,41 @@ static char ***ret_argv_addr;
 
 int launcher_cancelled = 0;
 
+static char* get_preferred_shell_config_path(void) {
+  char *xdg, *ret;
+
+  xdg = get_xdg_dir();
+  ret = asform("%s/preferred_shell", xdg);
+  free(xdg);
+  return ret;
+}
+
+static char **shells;
+size_t shells_sz = 4;
+size_t shells_n = 0;
+
+static char *launcher_argv[2] = {
+  NULL, NULL
+};
+
 void launcher_init(char ***argv_addr) {
   ret_argv_addr = argv_addr;
+  shells = newn(char*, shells_sz);
 }
 
 void launcher_free(void) {
-  return;
+  size_t i;
+  for (i = 0; i < shells_n; i++) {
+    free(shells[i]);
+  }
+  free(shells);
+  if (launcher_argv[0]) {
+    free(launcher_argv[0]);
+  }
 }
 
 static int selected_btn = IDD_MSYS2_BTN;
+static int selected_exe = 0;
 
 void launcher_setup_env(void) {
   switch (selected_btn) {
@@ -35,17 +67,57 @@ void launcher_setup_env(void) {
   return;
 }
 
-static char *bash_cmd[] = {
-  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
-  "-bash", NULL
-};
-
 void launcher_setup_argv(void) {
+  const char *cmdname;
+
   /* Global variable from winmain.c, used to pass the filepath to execute to
    * child_create() from main() ("Work out what to execute."). */
-  cmd = "/usr/bin/bash";
+  cmd = shells[selected_exe];
 
-  *ret_argv_addr = bash_cmd;
+  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+  cmdname = strrchr(cmd, '/');
+  if (cmdname == NULL) {
+    cmdname = cmd;
+  } else {
+    cmdname += 1;
+  }
+  if (launcher_argv[0]) {
+    free(launcher_argv[0]);
+  }
+  launcher_argv[0] = asform("-%s", cmdname);
+  launcher_argv[1] = NULL;
+
+  *ret_argv_addr = launcher_argv;
+}
+
+/* Should only be called after launcher_setup_argv. */
+void launcher_save_prefs(void) {
+  FILE *f;
+  char *xdg, *xdg_shell;
+
+  xdg = get_xdg_dir();
+  if (xdg != NULL) {
+    if (access(xdg, R_OK) != 0) {
+      /* mkdir ~/.config */
+      char* xdg_slash = strrchr(xdg, '/');
+      if (xdg_slash != NULL) {
+        *xdg_slash = 0;
+        mkdir(xdg, S_IRWXU | S_IRWXG | S_IRWXO);
+        *xdg_slash = '/';
+      }
+      /* mkdir ~/.config/mintty */
+      mkdir(xdg, S_IRWXU | S_IRWXG | S_IRWXO);
+    }
+    free(xdg);
+  }
+
+  xdg_shell = get_preferred_shell_config_path();
+  f = fopen(xdg_shell, "w");
+  if (f != NULL) {
+    fprintf(f, "%s", cmd);
+    fclose(f);
+  }
+  free(xdg_shell);
 }
 
 static void launcher_add_tooltip_to_window(HWND hwnd, char *text) {
@@ -86,12 +158,133 @@ static void launcher_add_tooltip_to_window_by_id(HWND dialog, int id, const char
 static void launcher_add_tooltips(HWND hwnd) {
   launcher_add_tooltip_to_window(hwnd,
       "MSYS2 shell launcher");
+  launcher_add_tooltip_to_window_by_id(hwnd, IDD_ETC_SHELLS,
+      "Shell executable to run");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MSYS2_BTN,
       "The emulated shell, for running and building Msys2-specific apps.");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MINGW32_BTN,
       "32-bit shell, for running and building native apps.");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MINGW64_BTN,
       "64-bit shell, for running and building native apps.");
+}
+
+static void add_line_to_combo_box(HWND hwnd, const char *text) {
+  SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM) text);
+}
+
+static void select_nth_line_in_combo_box(HWND hwnd, WPARAM n) {
+  SendMessage(hwnd, CB_SETCURSEL, n, 0);
+}
+
+/* Return the index of the first shell that matches the text after or on a slash, or -1. */
+static ssize_t find_shell_match(const char *text) {
+  size_t i;
+  while (*text == '/') { text++; }
+  for (i = 0; i < shells_n; i++) {
+    char *shell = shells[i];
+    char *s = shell + strlen(shell);
+    while (s > shell) {
+      while ((s > shell) && (*s == '/')) { s--; }
+      while ((s > shell) && (*s != '/')) { s--; }
+      if (strcmp(s + 1, text) == 0) {
+        return (ssize_t) i;
+      }
+      if (strcmp(s, text) == 0) {
+        return (ssize_t) i;
+      }
+    }
+  }
+  return -1;
+}
+
+static HWND etc_shells;
+
+static char* fgets_nonempty_noncomment_line(char *buf, size_t bufsiz, FILE *stream) {
+  for (;;) {
+    if ( fgets(buf, bufsiz, stream) == NULL) {
+      return NULL;
+    }
+    char *s = buf;
+    char *s1;
+    while (*s == ' ' || *s == '\t') { s++; }
+    if (*s == '#' || *s == '\r' || *s == '\n' || *s == '\0') { continue; }
+    while ((s1 = strrchr(s, '\r')) || (s1 = strrchr(s, '\n'))) { *s1 = '\0'; }
+    return s;
+  }
+  return NULL;
+}
+
+static void launcher_add_shells(HWND dialog) {
+  size_t i;
+  ssize_t j;
+  FILE *f;
+  char line[1024];
+  char *s, *xdg_shell;
+  char *preferred_shell = NULL;
+
+  f = fopen("/etc/shells", "r");
+  if (!f) {
+    shells[0] = strdup("/usr/bin/sh");
+    shells_n = 1;
+  } else {
+    for (;;) {
+      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
+      if (s == NULL) { break; }
+      shells[shells_n] = strdup(s);
+      shells_n++;
+      if (shells_n >= shells_sz) {
+        shells_sz *= 2;
+        shells = renewn(shells, sizeof(char*) * shells_sz);
+      }
+    }
+    fclose(f);
+  }
+
+  etc_shells = GetDlgItem(dialog, IDD_ETC_SHELLS);
+  for (i = 0; i < shells_n; i++) {
+    add_line_to_combo_box(etc_shells, shells[i]);
+  }
+
+  xdg_shell = get_preferred_shell_config_path();
+  f = fopen(xdg_shell, "r");
+  if (f != NULL) {
+    for (;;) {
+      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
+      if (s == NULL) { break; }
+      preferred_shell = strdup(s);
+      break;
+    }
+    fclose(f);
+  }
+  free(xdg_shell);
+
+  j = -1;
+  if (preferred_shell) {
+    j = find_shell_match(preferred_shell);
+    if (j < 0) {
+      char *preferred_shell_name =
+          strrchr(preferred_shell, '/');
+      if (preferred_shell_name != NULL) {
+        preferred_shell_name++;
+        j = find_shell_match(preferred_shell_name);
+      }
+    }
+    free(preferred_shell);
+  }
+
+  const char* default_shells[] = {
+    "bin/bash", "bash", "bin/sh", "sh", NULL
+  };
+  const char **dflt_sh;
+  for (dflt_sh = default_shells; (j < 0) && (*dflt_sh != NULL); dflt_sh++) {
+    j = find_shell_match(*dflt_sh);
+  }
+
+  if (j < 0) {
+    j = 0;
+  }
+
+  select_nth_line_in_combo_box(etc_shells, j);
 }
 
 HICON launcher_icon;
@@ -109,6 +302,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     case IDD_MSYS2_BTN:
     case IDD_MINGW32_BTN:
     case IDD_MINGW64_BTN:
+      selected_exe = SendMessage(etc_shells, CB_GETCURSEL, 0, 0);
       DestroyWindow(hwnd);
       selected_btn = LOWORD(wParam);
       return TRUE;
@@ -119,6 +313,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
   case WM_INITDIALOG:
     SendMessage(hwnd, WM_SETICON, 0, (LPARAM)launcher_icon);
     launcher_add_tooltips(hwnd);
+    launcher_add_shells(hwnd);
     return TRUE;
   case WM_DESTROY:
     break;
