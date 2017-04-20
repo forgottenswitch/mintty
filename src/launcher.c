@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <commctrl.h>
 #include "res.h"
+#include "win.h"
 
 #define INSIDE_LAUNCHER
 #include "launcher.h"
@@ -35,10 +36,15 @@ void launcher_setup_env(void) {
 }
 
 static char *bash_cmd[] = {
-  "/usr/bin/bash", "--login", NULL
+  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+  "-bash", NULL
 };
 
 void launcher_setup_argv(void) {
+  /* Global variable from winmain.c, used to pass the filepath to execute to
+   * child_create() from main() ("Work out what to execute."). */
+  cmd = "/usr/bin/bash";
+
   *ret_argv_addr = bash_cmd;
 }
 
