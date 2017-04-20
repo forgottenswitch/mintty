@@ -1,5 +1,10 @@
 #include <windows.h>
 #include <commctrl.h>
+
+#include <sys/cygwin.h>
+#include <sys/stat.h>
+#include <pwd.h>
+
 #include "res.h"
 #include "std.h"
 #include "win.h"
@@ -10,6 +15,15 @@
 static char ***ret_argv_addr;
 
 int launcher_cancelled = 0;
+
+static char* get_preferred_shell_config_path(void) {
+  char *xdg, *ret;
+
+  xdg = get_xdg_dir();
+  ret = asform("%s/preferred_shell", xdg);
+  free(xdg);
+  return ret;
+}
 
 static char **shells;
 size_t shells_sz = 4;
@@ -155,23 +169,37 @@ static ssize_t find_shell_match(const char *text) {
 
 static HWND etc_shells;
 
+static char* fgets_nonempty_noncomment_line(char *buf, size_t bufsiz, FILE *stream) {
+  for (;;) {
+    if ( fgets(buf, bufsiz, stream) == NULL) {
+      return NULL;
+    }
+    char *s = buf;
+    char *s1;
+    while (*s == ' ' || *s == '\t') { s++; }
+    if (*s == '#' || *s == '\r' || *s == '\n' || *s == '\0') { continue; }
+    while ((s1 = strrchr(s, '\r')) || (s1 = strrchr(s, '\n'))) { *s1 = '\0'; }
+    return s;
+  }
+  return NULL;
+}
+
 static void launcher_add_shells(HWND dialog) {
   size_t i;
   ssize_t j;
   FILE *f;
   char line[1024];
+  char *s, *xdg_shell;
+  char *preferred_shell = NULL;
 
   f = fopen("/etc/shells", "r");
   if (!f) {
     shells[0] = strdup("/usr/bin/sh");
     shells_n = 1;
   } else {
-    while ( fgets(line, sizeof line, f) != NULL ) {
-      char *s = line;
-      char *s1;
-      while (*s == ' ' || *s == '\t') { s++; }
-      if (*s == '#' || *s == '\r' || *s == '\n' || *s == '\0') { continue; }
-      while ((s1 = strrchr(s, '\r')) || (s1 = strrchr(s, '\n'))) { *s1 = '\0'; }
+    for (;;) {
+      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
+      if (s == NULL) { break; }
       shells[shells_n] = strdup(s);
       shells_n++;
       if (shells_n >= shells_sz) {
@@ -187,8 +215,44 @@ static void launcher_add_shells(HWND dialog) {
     add_line_to_combo_box(etc_shells, shells[i]);
   }
 
-  j = find_shell_match("bin/sh");
-  if (j < 0) { j = 0; }
+  xdg_shell = get_preferred_shell_config_path();
+  f = fopen(xdg_shell, "r");
+  if (f != NULL) {
+    for (;;) {
+      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
+      if (s == NULL) { break; }
+      preferred_shell = strdup(s);
+      break;
+    }
+    fclose(f);
+  }
+  free(xdg_shell);
+
+  j = -1;
+  if (preferred_shell) {
+    j = find_shell_match(preferred_shell);
+    if (j < 0) {
+      char *preferred_shell_name =
+          strrchr(preferred_shell, '/');
+      if (preferred_shell_name != NULL) {
+        preferred_shell_name++;
+        j = find_shell_match(preferred_shell_name);
+      }
+    }
+    free(preferred_shell);
+  }
+
+  const char* default_shells[] = {
+    "bin/bash", "bash", "bin/sh", "sh", NULL
+  };
+  const char **dflt_sh;
+  for (dflt_sh = default_shells; (j < 0) && (*dflt_sh != NULL); dflt_sh++) {
+    j = find_shell_match(*dflt_sh);
+  }
+
+  if (j < 0) {
+    j = 0;
+  }
 
   select_nth_line_in_combo_box(etc_shells, j);
 }

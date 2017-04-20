@@ -15,6 +15,8 @@ extern char * home;
 extern char * cmd;
 extern bool icon_is_from_shortcut;
 
+extern char * get_xdg_dir(void);
+
 extern void exit_mintty(void);
 extern void report_pos(void);
 extern void win_reconfig(void);
