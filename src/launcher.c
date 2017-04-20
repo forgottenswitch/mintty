@@ -104,16 +104,18 @@ static void launcher_select_line_in_combo_box(HWND hwnd, const char *text) {
   SendMessage(hwnd, CB_SELECTSTRING, 0, (LPARAM) text);
 }
 
-static void launcher_add_shells(HWND dialog) {
-  HWND etc_shells;
+static HWND etc_shells;
 
+static void launcher_add_shells(HWND dialog) {
   etc_shells = GetDlgItem(dialog, IDD_ETC_SHELLS);
   launcher_add_line_to_combo_box(etc_shells, "/bin/bash");
+  launcher_add_line_to_combo_box(etc_shells, "/bin/bash2");
   launcher_select_line_in_combo_box(etc_shells, "/bin/bash");
 }
 
 HICON launcher_icon;
 
+#include <stdio.h>
 INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
   (void) lParam;
 
@@ -127,6 +129,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     case IDD_MSYS2_BTN:
     case IDD_MINGW32_BTN:
     case IDD_MINGW64_BTN:
+      printf("cursel is %d\n", (int)SendMessage(etc_shells, CB_GETCURSEL, 0, 0));
       DestroyWindow(hwnd);
       selected_btn = LOWORD(wParam);
       return TRUE;
