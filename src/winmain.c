@@ -2194,6 +2194,8 @@ static int getenvi(const char *varname) {
 int
 main(int argc, char *argv[])
 {
+  bool do_launcher = false;
+
   main_argv = argv;
   main_argc = argc;
 #ifdef debuglog
@@ -2439,6 +2441,8 @@ main(int argc, char *argv[])
   if (*argv && (argv[1] || strcmp(*argv, "-")))
     cmd = *argv;
   else {
+    do_launcher = true;
+
     // Look up the user's shell.
     cmd = getenv("SHELL");
     cmd = cmd ? strdup(cmd) :
@@ -2785,7 +2789,7 @@ main(int argc, char *argv[])
   {
     char **argv1 = argv;
 
-    if (argc == 1) {
+    if (do_launcher) {
       launcher_init(&argv1);
       DialogBox(inst, MAKEINTRESOURCE(IDD_LAUNCHER), NULL, (DLGPROC)launcher_dlgproc);
       if (launcher_cancelled) {
@@ -2807,7 +2811,7 @@ main(int argc, char *argv[])
       argv1, &(struct winsize){term_rows, term_cols, term_width, term_height}
     );
 
-    if (argc == 1) {
+    if (do_launcher) {
       launcher_free();
     }
   }
