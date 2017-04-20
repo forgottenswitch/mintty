@@ -86,6 +86,8 @@ static void launcher_add_tooltip_to_window_by_id(HWND dialog, int id, char *text
 static void launcher_add_tooltips(HWND hwnd) {
   launcher_add_tooltip_to_window(hwnd,
       "MSYS2 shell launcher");
+  launcher_add_tooltip_to_window_by_id(hwnd, IDD_ETC_SHELLS,
+      "Shell executable to run");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MSYS2_BTN,
       "The emulated shell, for running and building Msys2-specific apps.");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MINGW32_BTN,
