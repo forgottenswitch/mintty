@@ -124,20 +124,40 @@ static void launcher_add_tooltips(HWND hwnd) {
       "64-bit shell, for running and building native apps.");
 }
 
-static void launcher_add_line_to_combo_box(HWND hwnd, const char *text) {
+static void add_line_to_combo_box(HWND hwnd, const char *text) {
   SendMessage(hwnd, CB_ADDSTRING, 0, (LPARAM) text);
 }
 
-static void launcher_select_line_in_combo_box(HWND hwnd, const char *text) {
-  (void) text;
-  WPARAM n = shells_n - 1;
+static void select_nth_line_in_combo_box(HWND hwnd, WPARAM n) {
   SendMessage(hwnd, CB_SETCURSEL, n, 0);
+}
+
+/* Return the index of the first shell that matches the text after or on a slash, or -1. */
+static ssize_t find_shell_match(const char *text) {
+  size_t i;
+  while (*text == '/') { text++; }
+  for (i = 0; i < shells_n; i++) {
+    char *shell = shells[i];
+    char *s = shell + strlen(shell);
+    while (s > shell) {
+      while ((s > shell) && (*s == '/')) { s--; }
+      while ((s > shell) && (*s != '/')) { s--; }
+      if (strcmp(s + 1, text) == 0) {
+        return (ssize_t) i;
+      }
+      if (strcmp(s, text) == 0) {
+        return (ssize_t) i;
+      }
+    }
+  }
+  return -1;
 }
 
 static HWND etc_shells;
 
 static void launcher_add_shells(HWND dialog) {
   size_t i;
+  ssize_t j;
   FILE *f;
   char line[1024];
 
@@ -164,9 +184,13 @@ static void launcher_add_shells(HWND dialog) {
 
   etc_shells = GetDlgItem(dialog, IDD_ETC_SHELLS);
   for (i = 0; i < shells_n; i++) {
-    launcher_add_line_to_combo_box(etc_shells, shells[i]);
+    add_line_to_combo_box(etc_shells, shells[i]);
   }
-  launcher_select_line_in_combo_box(etc_shells, shells[0]);
+
+  j = find_shell_match("bin/sh");
+  if (j < 0) { j = 0; }
+
+  select_nth_line_in_combo_box(etc_shells, j);
 }
 
 HICON launcher_icon;
