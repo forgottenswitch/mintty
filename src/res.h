@@ -16,6 +16,14 @@
 #define DIALOG_TITLE "Options"
 #define DIALOG_CLASS "ConfigBox"
 
+#if defined(MINTTY_AS_MINGW32)
+#define MAIN_ICO "mingw32.ico"
+#elif defined(MINTTY_AS_MINGW64)
+#define MAIN_ICO "mingw64.ico"
+#else
+#define MAIN_ICO "/msys2.ico"
+#endif
+
 #define DIALOG_FONT "MS Shell Dlg"
 //#define DIALOG_FONT "Tahoma"
 

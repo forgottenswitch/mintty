@@ -147,10 +147,10 @@ $(NAME).exe: ../main.o ../res-msys2.o $(MAINLIB)
 $(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
 	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
-$(NAME)-as-mingw32.exe: ../main-mingw32.o ../res-msys2.o $(MAINLIB)
+$(NAME)-as-mingw32.exe: ../main-mingw32.o ../res-mingw32.o $(MAINLIB)
 	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
-$(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-msys2.o $(MAINLIB)
+$(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-mingw64.o $(MAINLIB)
 	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
 ../main.o: ../main.c
@@ -168,6 +168,14 @@ $(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-msys2.o $(MAINLIB)
 ../res-msys2.o: ../res.rc res.h ../res.mft
 	cd $(@D) && \
 	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
+
+../res-mingw32.o: ../res.rc res.h ../res.mft
+	cd $(@D) && \
+	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MINGW32 -I./src $(CPPFLAGS)' res.rc $(@F)
+
+../res-mingw64.o: ../res.rc res.h ../res.mft
+	cd $(@D) && \
+	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MINGW64 -I./src $(CPPFLAGS)' res.rc $(@F)
 
 bin := $(addprefix $(BINDIR)/, $(exe))
 bin: $(BINDIR) $(bin)
