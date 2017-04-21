@@ -10,7 +10,15 @@
 #define BUILD_NUMBER   0
 
 // needed for res.rc
+#if defined(MINTTY_AS_MINGW32)
+#define APPDESC "32-bit native MSYS2"
+#elif defined(MINTTY_AS_MINGW64)
+#define APPDESC "64-bit native MSYS2"
+#elif defined(MINTTY_AS_MSYS2)
+#define APPDESC "Emulated MSYS2"
+#else
 #define APPDESC "MSYS2 terminal"
+#endif
 #define AUTHOR  "Andy Koppe / Thomas Wolff"
 #define YEAR    "2013/2016"
 
