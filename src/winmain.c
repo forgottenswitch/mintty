@@ -2823,7 +2823,7 @@ mintty_main(int argc, char *argv[])
     // Ask /etc/post-install/05-home-dir.post not to "cd ~/" in an Alt-F2 window
     {
       if (getenvi("MINTTY_IS_CHILD")) {
-        putenv("CHERE_INVOKING=1");
+        setenv("CHERE_INVOKING", "1", true);
       }
       unsetenv("MINTTY_IS_CHILD");
     }
