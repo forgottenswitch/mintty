@@ -55,6 +55,36 @@ static char* get_preferred_shell(void) {
   return ret;
 }
 
+static wchar_t *get_program_directory(void) {
+  wchar_t *d = NULL;
+  size_t d_n_inuse = 0;
+  size_t d_n_alloc = 512;
+  size_t i;
+
+  d = malloc(d_n_alloc * sizeof(wchar_t));
+  for (;;) {
+    GetModuleFileNameW(NULL, d, d_n_alloc);
+    for (i = 0; i < d_n_alloc; i++) {
+      if (d[i] == 0) {
+        break;
+      }
+    }
+    d_n_inuse = i;
+    if (d_n_inuse < d_n_alloc-1) {
+      break;
+    }
+    d_n_alloc *= 1.5;
+    d = realloc(d, d_n_alloc * sizeof(wchar_t));
+  }
+
+  wchar_t *d1 = wcsrchr(d, '\\');
+  if (d1 != NULL) {
+    *d1 = 0;
+  }
+
+  return d;
+}
+
 static char **shells;
 size_t shells_sz = 4;
 size_t shells_n = 0;
@@ -95,6 +125,64 @@ void launcher_setup_env(void) {
     break;
   }
   return;
+}
+
+static char* get_mbs_from_wcs(wchar_t *wc) {
+  char *s;
+  size_t l;
+
+  l = wcstombs(NULL, wc, 0);
+  s = malloc(l + 1);
+  l = wcstombs(s, wc, l);
+
+  if (l == (size_t)-1) {
+    perror(__func__);
+    exit(1);
+  }
+
+  return s;
+}
+
+void launcher_exec_dedicated(void) {
+  wchar_t *progdir_wc;
+  char *progdir_mb;
+  char *progdedicated_name;
+  size_t progdedicated_sz;
+  char *progdedicated;
+
+  printf("exec dedicated\n");
+  progdir_wc = get_program_directory();
+  printf("exec dedicated\n");
+  progdir_mb = get_mbs_from_wcs(progdir_wc);
+  printf("exec dedicated\n");
+  if (!progdir_mb) {
+    printf("failed to progdir_mb\n");
+    exit(1);
+  }
+  printf("exec dedicated\n");
+
+  progdedicated_name = NULL;
+  if (selected_btn == IDD_MSYS2_BTN) {
+    progdedicated_name = "mintty-as-msys2";
+  } else if (selected_btn == IDD_MINGW32_BTN) {
+    progdedicated_name = "mintty-as-mingw32";
+  } else if (selected_btn == IDD_MINGW64_BTN) {
+    progdedicated_name = "mintty-as-mingw64";
+  }
+  printf("progdedicated_name: %s\n", progdedicated_name);
+
+  progdedicated_sz = (wcslen(progdir_wc)*4 + 1 + strlen(progdedicated_name) + 1);
+  progdedicated = malloc(progdedicated_sz);
+  sprintf(progdedicated, "%ls/%s", progdir_wc, progdedicated_name);
+  printf("progdedicated: %s\n", progdedicated);
+
+  printf("execl [%s] [%s] [%s]\n", progdedicated, progdedicated_name, cmd);
+  execl(progdedicated, progdedicated_name, cmd, NULL);
+
+  free(progdedicated);
+  free(progdir_mb);
+  free(progdir_wc);
+  exit(1);
 }
 
 static void setup_login_shell_argv(char *prog, char **argv) {
