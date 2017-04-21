@@ -90,6 +90,36 @@ void launcher_setup_argv(void) {
   *ret_argv_addr = launcher_argv;
 }
 
+/* Should only be called after launcher_setup_argv. */
+void launcher_save_prefs(void) {
+  FILE *f;
+  char *xdg, *xdg_shell;
+
+  xdg = get_xdg_dir();
+  if (xdg) {
+    if (access(xdg, R_OK) != 0) {
+      /* mkdir ~/.config */
+      char* xdg_slash = strrchr(xdg, '/');
+      if (xdg_slash != NULL) {
+        *xdg_slash = 0;
+        mkdir(xdg, S_IRWXU | S_IRWXG | S_IRWXO);
+        *xdg_slash = '/';
+      }
+      /* mkdir ~/.config/mintty */
+      mkdir(xdg, S_IRWXU | S_IRWXG | S_IRWXO);
+    }
+    free(xdg);
+  }
+
+  xdg_shell = get_preferred_shell_config_path();
+  f = fopen(xdg_shell, "w");
+  if (f != NULL) {
+    fprintf(f, "%s", cmd);
+    fclose(f);
+  }
+  free(xdg_shell);
+}
+
 static void launcher_add_tooltip_to_window(HWND hwnd, char *text) {
   TOOLINFO ti;
   RECT rect;

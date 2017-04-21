@@ -2804,6 +2804,7 @@ main(int argc, char *argv[])
       }
       launcher_setup_env();
       launcher_setup_argv();
+      launcher_save_prefs();
     }
     // Ask /etc/post-install/05-home-dir.post not to "cd ~/" in an Alt-F2 window
     {
