@@ -72,6 +72,8 @@ version := \
   $(shell echo $(shell echo VERSION | cpp -P $(CPPFLAGS) --include appinfo.h))
 name_ver := $(NAME)-$(version)
 
+QUIET_OK = 2>/dev/null || true
+
 #############################################################################
 # compilation parameters
 
@@ -127,21 +129,34 @@ $(BINDIR)/%.o: %.c
 	$(CC) -c $(DEPOPT) $(CPPFLAGS) $(CCFLAGS) -fstack-check $< -o $(BINDIR)/$*.o
 
 $(BINDIR)/%.o: %.rc %.h %.mft
-	$(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' $< $(BINDIR)/$*.o
-	-mv $*.d $(BINDIR)/
+	d="$$(pwd)" ; \
+	cd $(BINDIR) && \
+	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' "$$d"/$< $*.o
 
-exe := $(NAME).exe
+%.o: %.rc %.h %.mft
+	$(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' $< $*.o
+
+exe := $(NAME).exe $(NAME)-as-msys2.exe
 exe: $(exe)
-$(exe): $(objs)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-	#-du -b $@
 
-bin := $(BINDIR)/$(NAME).exe
+$(NAME).exe: $(objs) ../main.o
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+$(NAME)-as-msys2.exe: $(objs) ../main-msys2.o
+	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+../main.o: ../main.c
+	$(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
+
+../main-msys2.o: ../main.c
+	$(CC) -c -DMINTTY_AS_MSYS2 $(CPPFLAGS) $(CCFLAGS) $< -o $@
+
+bin := $(addprefix $(BINDIR)/, $(exe))
 bin: $(BINDIR) $(bin)
 $(BINDIR):
 	mkdir -p $(BINDIR)
-$(bin): $(bins)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+$(bin): $(exe)
+	cp -f $^ $(BINDIR)/
 	cp -f $@ $(BINFOLDER)/		# for 'dobin' install in .cygport
 	# support simpler debugging:
 	-test -f `basename $@` && cp -fp $@ ./ || true
@@ -244,8 +259,8 @@ $(html): ../docs/$(NAME).1
 	groff -t -man -Thtml $< > $@
 
 clean:
-	#rm -rf *.d *.o $(NAME)*
-	rm -rf $(BINDIR)/*.d $(BINDIR)/*.o $(BINDIR)/$(NAME)*
+	rm -rf *.d *.o $(NAME)* $(QUIET_OK)
+	rm -rf $(BINDIR)/*.d $(BINDIR)/*.o $(BINDIR)/$(NAME)* $(QUIET_OK)
 
 check:	checksrc checkresource checkloc
 

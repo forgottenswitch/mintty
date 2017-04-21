@@ -41,6 +41,8 @@ char * home;
 char * cmd;
 bool icon_is_from_shortcut = false;
 
+char *preset_msystem_to_set = NULL;
+
 HINSTANCE inst;
 HWND wnd;
 HIMC imc;
@@ -2197,7 +2199,7 @@ static int getenvi(const char *varname) {
 }
 
 int
-main(int argc, char *argv[])
+mintty_main(int argc, char *argv[])
 {
   bool do_launcher = false;
 
@@ -2795,6 +2797,13 @@ main(int argc, char *argv[])
 
   {
     char **argv1 = argv;
+
+    printf("pm: %s\n", preset_msystem_to_set);
+    if (!do_launcher && (preset_msystem_to_set != NULL)) {
+      char *msystem = asform("MSYSTEM=%s", preset_msystem_to_set);
+      putenv(msystem);
+      free(msystem);
+    }
 
     if (do_launcher) {
       launcher_init(&argv1);
