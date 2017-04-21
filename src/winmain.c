@@ -2797,12 +2797,20 @@ mintty_main(int argc, char *argv[])
 
   {
     char **argv1 = argv;
+    bool free_the_launcher = false;
 
-    if (!do_launcher && (preset_msystem_to_set != NULL)) {
+    if (preset_msystem_to_set != NULL) {
       setenv("MSYSTEM", preset_msystem_to_set, true);
+      if (do_launcher) {
+        do_launcher = false;
+        free_the_launcher = true;
+        launcher_init(&argv1);
+        launcher_setup_argv_from_prefs();
+      }
     }
 
     if (do_launcher) {
+      free_the_launcher = true;
       launcher_init(&argv1);
       DialogBox(inst, MAKEINTRESOURCE(IDD_LAUNCHER), NULL, (DLGPROC)launcher_dlgproc);
       if (launcher_cancelled) {
@@ -2825,7 +2833,7 @@ mintty_main(int argc, char *argv[])
       argv1, &(struct winsize){term_rows, term_cols, term_width, term_height}
     );
 
-    if (do_launcher) {
+    if (free_the_launcher) {
       launcher_free();
     }
   }
