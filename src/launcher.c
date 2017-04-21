@@ -150,16 +150,11 @@ void launcher_exec_dedicated(void) {
   size_t progdedicated_sz;
   char *progdedicated;
 
-  printf("exec dedicated\n");
   progdir_wc = get_program_directory();
-  printf("exec dedicated\n");
   progdir_mb = get_mbs_from_wcs(progdir_wc);
-  printf("exec dedicated\n");
   if (!progdir_mb) {
-    printf("failed to progdir_mb\n");
     exit(1);
   }
-  printf("exec dedicated\n");
 
   progdedicated_name = NULL;
   if (selected_btn == IDD_MSYS2_BTN) {
@@ -169,14 +164,11 @@ void launcher_exec_dedicated(void) {
   } else if (selected_btn == IDD_MINGW64_BTN) {
     progdedicated_name = "mintty-as-mingw64";
   }
-  printf("progdedicated_name: %s\n", progdedicated_name);
 
   progdedicated_sz = (wcslen(progdir_wc)*4 + 1 + strlen(progdedicated_name) + 1);
   progdedicated = malloc(progdedicated_sz);
   sprintf(progdedicated, "%ls/%s", progdir_wc, progdedicated_name);
-  printf("progdedicated: %s\n", progdedicated);
 
-  printf("execl [%s] [%s] [%s]\n", progdedicated, progdedicated_name, cmd);
   execl(progdedicated, progdedicated_name, cmd, NULL);
 
   free(progdedicated);
