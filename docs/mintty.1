@@ -11,7 +11,7 @@
 
 .SH NAME
 
-mintty \(en Cygwin terminal emulator
+mintty \(en MSYS2 packaging of Cygwin terminal emulator
 
 .SH SYNOPSIS
 
@@ -27,14 +27,21 @@ require an X server.
 .SH INVOCATION
 
 If a program name is supplied on the command line, this is executed with any
-additional arguments given.
-Otherwise, mintty looks for a shell to execute in the \fISHELL\fP environment
-variable.
-If that is not set, it reads the user's default shell setting from
-\fI/etc/passwd\fP.
-As a last resort, it falls back to \fI/bin/sh\fP.
-If a single dash is specified instead of a program name, the shell is invoked
-as a login shell.
+additional arguments given.  And if the program name is prefixed with a single
+dash argument, the program is executed as a login shell.
+
+Otherwise, the list of valid login shells is read from \fB/etc/shells\fP,
+defaulting to just \fB/usr/bin/sh\fP, and the shell selection dialog is
+displayed.  The selected shell is then run as a login one.  Prior to running,
+the environmental variable \fBMSYSTEM\fP is set to either \fBMSYS\fP,
+\fBMINGW32\fP, or \fBMINGW64\fP, depending on user's choice of shell type, to
+communicate the type to MSYS2 \fB/etc/profile\fP script.  The choice of login
+shell is recorded into \fB~/.config/mintty/preferred_shell\fP, for launcher to
+default to it at the next invocation.
+
+The launcher's "Dedicated window" option is implemented by means of additional
+\fBmintty-as-msys2\fP, \fBmintty-as-mingw32\fP, and \fBmintty-as-mingw64\fP
+executables.
 
 .SH OPTIONS
 
