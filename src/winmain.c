@@ -2804,7 +2804,7 @@ mintty_main(int argc, char *argv[])
       char *msystem = asform("MSYSTEM=%s", preset_msystem_to_set);
       putenv(msystem);
       printf("putenv: << %s >>\n", msystem);
-      free(msystem);
+      /* freeing this putenv'ed string results in MSYSTEM=MSYS */
     }
 
     if (do_launcher) {
