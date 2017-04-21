@@ -1,5 +1,6 @@
 #ifndef INSIDE_LAUNCHER
 extern int launcher_cancelled;
+extern int launcher_do_dedicated_window;
 extern HICON launcher_icon;
 #endif
 

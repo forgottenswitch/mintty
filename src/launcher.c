@@ -18,6 +18,7 @@
 static char ***ret_argv_addr;
 
 int launcher_cancelled = 0;
+int launcher_do_dedicated_window = 0;
 
 const char* default_preferred_shells[] = {
   "bin/bash", "bash", "bin/sh", "sh", NULL
@@ -332,6 +333,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     case IDD_MINGW32_BTN:
     case IDD_MINGW64_BTN:
       selected_exe = SendMessage(etc_shells, CB_GETCURSEL, 0, 0);
+      launcher_do_dedicated_window = IsDlgButtonChecked(hwnd, IDD_DEDICATED);
       DestroyWindow(hwnd);
       selected_btn = LOWORD(wParam);
       return TRUE;

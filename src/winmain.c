@@ -2813,6 +2813,7 @@ mintty_main(int argc, char *argv[])
       free_the_launcher = true;
       launcher_init(&argv1);
       DialogBox(inst, MAKEINTRESOURCE(IDD_LAUNCHER), NULL, (DLGPROC)launcher_dlgproc);
+      printf("do dedicated window: %d\n", launcher_do_dedicated_window);
       if (launcher_cancelled) {
         exit(1);
       }
