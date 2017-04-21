@@ -134,7 +134,8 @@ endif
 
 MAINLIB = msys-mintty-$(MAINLIB_VER).dll
 
-exe := $(MAINLIB) $(NAME).exe $(NAME)-as-msys2.exe
+exe := $(MAINLIB) $(NAME).exe $(NAME)-as-msys2.exe \
+  $(NAME)-as-mingw32.exe $(NAME)-as-mingw64.exe
 exe: $(exe)
 
 $(MAINLIB): $(objs)
@@ -146,11 +147,23 @@ $(NAME).exe: ../main.o ../res-msys2.o $(MAINLIB)
 $(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
 	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
+$(NAME)-as-mingw32.exe: ../main-mingw32.o ../res-msys2.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
+
+$(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-msys2.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
+
 ../main.o: ../main.c
 	$(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
 
 ../main-msys2.o: ../main.c
 	$(CC) -c -DMINTTY_AS_MSYS2 $(CPPFLAGS) $(CCFLAGS) $< -o $@
+
+../main-mingw32.o: ../main.c
+	$(CC) -c -DMINTTY_AS_MINGW32 $(CPPFLAGS) $(CCFLAGS) $< -o $@
+
+../main-mingw64.o: ../main.c
+	$(CC) -c -DMINTTY_AS_MINGW64 $(CPPFLAGS) $(CCFLAGS) $< -o $@
 
 ../res-msys2.o: ../res.rc res.h ../res.mft
 	cd $(@D) && \

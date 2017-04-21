@@ -2799,9 +2799,11 @@ mintty_main(int argc, char *argv[])
     char **argv1 = argv;
 
     printf("pm: %s\n", preset_msystem_to_set);
+    printf("dl: %d\n", (int)do_launcher);
     if (!do_launcher && (preset_msystem_to_set != NULL)) {
       char *msystem = asform("MSYSTEM=%s", preset_msystem_to_set);
       putenv(msystem);
+      printf("putenv: << %s >>\n", msystem);
       free(msystem);
     }
 
