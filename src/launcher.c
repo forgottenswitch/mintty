@@ -177,17 +177,27 @@ void launcher_exec_dedicated(void) {
   exit(1);
 }
 
-static void setup_login_shell_argv(char *prog, char **argv) {
+char *prepend_dash_to_progname(const char *prog) {
+  char *ret;
   const char *progname;
 
-  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
   progname = strrchr(prog, '/');
   if (progname == NULL) {
     progname = prog;
   } else {
     progname += 1;
   }
-  argv[0] = asform("-%s", progname);
+  ret = asform("-%s", progname);
+  return ret;
+}
+
+static void setup_login_shell_argv(char *prog, char **argv) {
+  char *dash_progname;
+
+  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+  dash_progname = prepend_dash_to_progname(prog);
+
+  argv[0] = dash_progname;
   argv[1] = NULL;
 }
 

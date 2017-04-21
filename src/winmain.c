@@ -2806,6 +2806,11 @@ mintty_main(int argc, char *argv[])
         free_the_launcher = true;
         launcher_init(&argv1);
         launcher_setup_argv_from_prefs();
+      } else {
+        /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+        char *dash_cmdname = prepend_dash_to_progname(cmd);
+        //free(argv1[0]); /* todo */
+        argv1[0] = dash_cmdname;
       }
     }
 
