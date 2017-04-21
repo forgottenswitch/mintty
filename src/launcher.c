@@ -148,11 +148,11 @@ static void launcher_add_tooltip_to_window(HWND hwnd, char *text) {
   SendMessage(hwnd_tt, TTM_ADDTOOL, 0, (LPARAM) (LPTOOLINFO) &ti);
 }
 
-static void launcher_add_tooltip_to_window_by_id(HWND dialog, int id, char *text) {
+static void launcher_add_tooltip_to_window_by_id(HWND dialog, int id, const char *text) {
   HWND hwnd;
 
   hwnd = GetDlgItem(dialog, id);
-  launcher_add_tooltip_to_window(hwnd, text);
+  launcher_add_tooltip_to_window(hwnd, strdup(text));
 }
 
 static void launcher_add_tooltips(HWND hwnd) {
