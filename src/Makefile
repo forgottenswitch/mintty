@@ -128,14 +128,6 @@ $(BINDIR)/term%.o: term%.c
 $(BINDIR)/%.o: %.c
 	$(CC) -c $(DEPOPT) $(CPPFLAGS) $(CCFLAGS) -fstack-check $< -o $(BINDIR)/$*.o
 
-$(BINDIR)/%.o: %.rc %.h %.mft
-	d="$$(pwd)" ; \
-	cd $(BINDIR) && \
-	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' "$$d"/$< $*.o
-
-%.o: %.rc %.h %.mft
-	$(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' $< $*.o
-
 ifeq ($(MAINLIB_VER),)
   MAINLIB_VER := 0
 endif
@@ -148,17 +140,21 @@ exe: $(exe)
 $(MAINLIB): $(objs)
 	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(NAME).exe: ../main.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $< $(MAINLIB) $(LDLIBS) -o $@
+$(NAME).exe: ../main.o ../res-msys2.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
-$(NAME)-as-msys2.exe: ../main-msys2.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $< $(MAINLIB) $(LDLIBS) -o $@
+$(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
 ../main.o: ../main.c
 	$(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
 
 ../main-msys2.o: ../main.c
 	$(CC) -c -DMINTTY_AS_MSYS2 $(CPPFLAGS) $(CCFLAGS) $< -o $@
+
+../res-msys2.o: ../res.rc res.h ../res.mft
+	cd $(@D) && \
+	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
 
 bin := $(addprefix $(BINDIR)/, $(exe))
 bin: $(BINDIR) $(bin)
