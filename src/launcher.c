@@ -207,6 +207,8 @@ static void launcher_add_tooltips(HWND hwnd) {
       "32-bit shell, for running and building native apps.");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MINGW64_BTN,
       "64-bit shell, for running and building native apps.");
+  launcher_add_tooltip_to_window_by_id(hwnd, IDD_DEDICATED,
+      "Use a separate Taskbar item, and do not pop up this dialog in new windows.");
 }
 
 static void add_line_to_combo_box(HWND hwnd, const char *text) {
