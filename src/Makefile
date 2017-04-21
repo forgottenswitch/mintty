@@ -136,14 +136,23 @@ $(BINDIR)/%.o: %.rc %.h %.mft
 %.o: %.rc %.h %.mft
 	$(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' $< $*.o
 
-exe := $(NAME).exe $(NAME)-as-msys2.exe
+ifeq ($(MAINLIB_VER),)
+  MAINLIB_VER := 0
+endif
+
+MAINLIB = msys-mintty-$(MAINLIB_VER).dll
+
+exe := $(MAINLIB) $(NAME).exe $(NAME)-as-msys2.exe
 exe: $(exe)
 
-$(NAME).exe: $(objs) ../main.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+$(MAINLIB): $(objs)
+	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(NAME)-as-msys2.exe: $(objs) ../main-msys2.o
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+$(NAME).exe: ../main.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $< $(MAINLIB) $(LDLIBS) -o $@
+
+$(NAME)-as-msys2.exe: ../main-msys2.o $(MAINLIB)
+	$(CC) $(LDFLAGS) $< $(MAINLIB) $(LDLIBS) -o $@
 
 ../main.o: ../main.c
 	$(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
@@ -260,6 +269,7 @@ $(html): ../docs/$(NAME).1
 
 clean:
 	rm -rf *.d *.o $(NAME)* $(QUIET_OK)
+	rm -rf ../*.d ../*.o ../$(NAME)* $(QUIET_OK)
 	rm -rf $(BINDIR)/*.d $(BINDIR)/*.o $(BINDIR)/$(NAME)* $(QUIET_OK)
 
 check:	checksrc checkresource checkloc
