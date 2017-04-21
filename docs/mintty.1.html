@@ -1,5 +1,5 @@
 <!-- Creator     : groff version 1.22.3 -->
-<!-- CreationDate: Fri Apr 14 00:30:36 2017 -->
+<!-- CreationDate: Tue May  2 22:38:23 2017 -->
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
 "http://www.w3.org/TR/html4/loose.dtd">
 <html>
@@ -41,7 +41,7 @@
 
 
 <p style="margin-left:11%; margin-top: 1em">mintty &ndash;
-Cygwin terminal emulator</p>
+MSYS2 packaging of Cygwin terminal emulator</p>
 
 <h2>SYNOPSIS
 <a name="SYNOPSIS"></a>
@@ -70,13 +70,27 @@ require an X server.</p>
 
 <p style="margin-left:11%; margin-top: 1em">If a program
 name is supplied on the command line, this is executed with
-any additional arguments given. Otherwise, mintty looks for
-a shell to execute in the <i>SHELL</i> environment variable.
-If that is not set, it reads the user&rsquo;s default shell
-setting from <i>/etc/passwd</i>. As a last resort, it falls
-back to <i>/bin/sh</i>. If a single dash is specified
-instead of a program name, the shell is invoked as a login
-shell.</p>
+any additional arguments given. And if the program name is
+prefixed with a single dash argument, the program is
+executed as a login shell.</p>
+
+<p style="margin-left:11%; margin-top: 1em">Otherwise, the
+list of valid login shells is read from <b>/etc/shells</b>,
+defaulting to just <b>/usr/bin/sh</b>, and the shell
+selection dialog is displayed. The selected shell is then
+run as a login one. Prior to running, the environmental
+variable <b>MSYSTEM</b> is set to either <b>MSYS</b>,
+<b>MINGW32</b>, or <b>MINGW64</b>, depending on user&rsquo;s
+choice of shell type, to communicate the type to MSYS2
+<b>/etc/profile</b> script. The choice of login shell is
+recorded into <b>~/.config/mintty/preferred_shell</b>, for
+launcher to default to it at the next invocation.</p>
+
+<p style="margin-left:11%; margin-top: 1em">The
+launcher&rsquo;s &quot;Dedicated window&quot; option is
+implemented by means of additional <b>mintty-as-msys2</b>,
+<b>mintty-as-mingw32</b>, and <b>mintty-as-mingw64</b>
+executables.</p>
 
 <h2>OPTIONS
 <a name="OPTIONS"></a>

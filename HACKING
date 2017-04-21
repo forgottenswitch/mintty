@@ -1,2 +1,4 @@
 If you want to test MSYS2 mintty "in-place", inside the /usr/bin, then also
 copy the msys-mintty-0.dll alongside the executable(s).
+
+The file docs/mintty.1.html is generated with "make html" command.
