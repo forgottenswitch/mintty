@@ -84,13 +84,13 @@ static int selected_exe = 0;
 void launcher_setup_env(void) {
   switch (selected_btn) {
   case IDD_MINGW32_BTN:
-    putenv("MSYSTEM=MINGW32");
+    setenv("MSYSTEM", "MINGW32", true);
     break;
   case IDD_MINGW64_BTN:
-    putenv("MSYSTEM=MINGW64");
+    setenv("MSYSTEM", "MINGW64", true);
     break;
   default:
-    putenv("MSYSTEM=MSYS");
+    setenv("MSYSTEM", "MSYS", true);
     break;
   }
   return;
