@@ -141,7 +141,7 @@ exe: $(exe)
 $(MAINLIB): $(objs)
 	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-$(NAME).exe: ../main.o ../res-msys2.o $(MAINLIB)
+$(NAME).exe: ../main.o ../res.o $(MAINLIB)
 	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
 
 $(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
@@ -165,9 +165,13 @@ $(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-mingw64.o $(MAINLIB)
 ../main-mingw64.o: ../main.c
 	$(CC) -c -DMINTTY_AS_MINGW64 $(CPPFLAGS) $(CCFLAGS) $< -o $@
 
-../res-msys2.o: ../res.rc res.h ../res.mft
+../res.o: ../res.rc res.h ../res.mft
 	cd $(@D) && \
 	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
+
+../res-msys2.o: ../res.rc res.h ../res.mft
+	cd $(@D) && \
+	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MSYS2 -I./src $(CPPFLAGS)' res.rc $(@F)
 
 ../res-mingw32.o: ../res.rc res.h ../res.mft
 	cd $(@D) && \
