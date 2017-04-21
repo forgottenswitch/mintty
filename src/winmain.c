@@ -43,6 +43,8 @@ char * home;
 char * cmd;
 bool icon_is_from_shortcut = false;
 
+char *preset_msystem_to_set = NULL;
+
 HINSTANCE inst;
 HWND wnd;
 HIMC imc;
@@ -2206,7 +2208,7 @@ static int getenvi(const char *varname) {
 }
 
 int
-main(int argc, char *argv[])
+mintty_main(int argc, char *argv[])
 {
   bool do_launcher = false;
 
@@ -2808,8 +2810,25 @@ main(int argc, char *argv[])
 
   {
     char **argv1 = argv;
+    bool free_the_launcher = false;
+
+    if (preset_msystem_to_set != NULL) {
+      setenv("MSYSTEM", preset_msystem_to_set, true);
+      if (do_launcher) {
+        do_launcher = false;
+        free_the_launcher = true;
+        launcher_init(&argv1);
+        launcher_setup_argv_from_prefs();
+      } else {
+        /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+        char *dash_cmdname = prepend_dash_to_progname(cmd);
+        //free(argv1[0]); /* todo */
+        argv1[0] = dash_cmdname;
+      }
+    }
 
     if (do_launcher) {
+      free_the_launcher = true;
       launcher_init(&argv1);
       DialogBox(inst, MAKEINTRESOURCE(IDD_LAUNCHER), NULL, (DLGPROC)launcher_dlgproc);
       if (launcher_cancelled) {
@@ -2818,6 +2837,9 @@ main(int argc, char *argv[])
       launcher_setup_env();
       launcher_setup_argv();
       launcher_save_prefs();
+      if (launcher_do_dedicated_window) {
+        launcher_exec_dedicated();
+      }
     }
     // Ask /etc/post-install/05-home-dir.post not to "cd ~/" in an Alt-F2 window
     {
@@ -2832,7 +2854,7 @@ main(int argc, char *argv[])
       argv1, &(struct winsize){term_rows, term_cols, term_width, term_height}
     );
 
-    if (do_launcher) {
+    if (free_the_launcher) {
       launcher_free();
     }
   }

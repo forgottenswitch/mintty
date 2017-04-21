@@ -12,9 +12,17 @@
 #define INSIDE_LAUNCHER
 #include "launcher.h"
 
+#define DEFAULT_SHELL "/usr/bin/sh"
+#define LINELEN 1024
+
 static char ***ret_argv_addr;
 
 int launcher_cancelled = 0;
+int launcher_do_dedicated_window = 0;
+
+const char* default_preferred_shells[] = {
+  "bin/bash", "bash", "bin/sh", "sh", NULL
+};
 
 static char* get_preferred_shell_config_path(void) {
   char *xdg, *ret;
@@ -23,6 +31,58 @@ static char* get_preferred_shell_config_path(void) {
   ret = asform("%s/preferred_shell", xdg);
   free(xdg);
   return ret;
+}
+
+static char* fgets_nonempty_noncomment_line(char *buf, size_t bufsiz, FILE *stream);
+
+static char* get_preferred_shell(void) {
+  char *s, *xdg_shell;
+  char *ret = NULL;
+  char line[LINELEN];
+  FILE *f;
+  xdg_shell = get_preferred_shell_config_path();
+  f = fopen(xdg_shell, "r");
+  if (f != NULL) {
+    for (;;) {
+      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
+      if (s == NULL) { break; }
+      ret = strdup(s);
+      break;
+    }
+    fclose(f);
+  }
+  free(xdg_shell);
+  return ret;
+}
+
+static wchar_t *get_program_directory(void) {
+  wchar_t *d = NULL;
+  size_t d_n_inuse = 0;
+  size_t d_n_alloc = 512;
+  size_t i;
+
+  d = malloc(d_n_alloc * sizeof(wchar_t));
+  for (;;) {
+    GetModuleFileNameW(NULL, d, d_n_alloc);
+    for (i = 0; i < d_n_alloc; i++) {
+      if (d[i] == 0) {
+        break;
+      }
+    }
+    d_n_inuse = i;
+    if (d_n_inuse < d_n_alloc-1) {
+      break;
+    }
+    d_n_alloc *= 1.5;
+    d = realloc(d, d_n_alloc * sizeof(wchar_t));
+  }
+
+  wchar_t *d1 = wcsrchr(d, '\\');
+  if (d1 != NULL) {
+    *d1 = 0;
+  }
+
+  return d;
 }
 
 static char **shells;
@@ -67,26 +127,98 @@ void launcher_setup_env(void) {
   return;
 }
 
-void launcher_setup_argv(void) {
-  const char *cmdname;
+static char* get_mbs_from_wcs(wchar_t *wc) {
+  char *s;
+  size_t l;
 
+  l = wcstombs(NULL, wc, 0);
+  s = malloc(l + 1);
+  l = wcstombs(s, wc, l);
+
+  if (l == (size_t)-1) {
+    perror(__func__);
+    exit(1);
+  }
+
+  return s;
+}
+
+void launcher_exec_dedicated(void) {
+  wchar_t *progdir_wc;
+  char *progdir_mb;
+  char *progdedicated_name;
+  size_t progdedicated_sz;
+  char *progdedicated;
+
+  progdir_wc = get_program_directory();
+  progdir_mb = get_mbs_from_wcs(progdir_wc);
+  if (!progdir_mb) {
+    exit(1);
+  }
+
+  progdedicated_name = NULL;
+  if (selected_btn == IDD_MSYS2_BTN) {
+    progdedicated_name = "mintty-as-msys2";
+  } else if (selected_btn == IDD_MINGW32_BTN) {
+    progdedicated_name = "mintty-as-mingw32";
+  } else if (selected_btn == IDD_MINGW64_BTN) {
+    progdedicated_name = "mintty-as-mingw64";
+  }
+
+  progdedicated_sz = (wcslen(progdir_wc)*4 + 1 + strlen(progdedicated_name) + 1);
+  progdedicated = malloc(progdedicated_sz);
+  sprintf(progdedicated, "%ls/%s", progdir_wc, progdedicated_name);
+
+  execl(progdedicated, progdedicated_name, cmd, NULL);
+
+  free(progdedicated);
+  free(progdir_mb);
+  free(progdir_wc);
+  exit(1);
+}
+
+char *prepend_dash_to_progname(const char *prog) {
+  char *ret;
+  const char *progname;
+
+  progname = strrchr(prog, '/');
+  if (progname == NULL) {
+    progname = prog;
+  } else {
+    progname += 1;
+  }
+  ret = asform("-%s", progname);
+  return ret;
+}
+
+static void setup_login_shell_argv(char *prog, char **argv) {
+  char *dash_progname;
+
+  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
+  dash_progname = prepend_dash_to_progname(prog);
+
+  argv[0] = dash_progname;
+  argv[1] = NULL;
+}
+
+void launcher_setup_argv(void) {
   /* Global variable from winmain.c, used to pass the filepath to execute to
    * child_create() from main() ("Work out what to execute."). */
   cmd = shells[selected_exe];
 
-  /* Prepending "-" to shell's argv[0] should make it behave as a login one. */
-  cmdname = strrchr(cmd, '/');
-  if (cmdname == NULL) {
-    cmdname = cmd;
-  } else {
-    cmdname += 1;
-  }
-  if (launcher_argv[0]) {
-    free(launcher_argv[0]);
-  }
-  launcher_argv[0] = asform("-%s", cmdname);
-  launcher_argv[1] = NULL;
+  setup_login_shell_argv(cmd, launcher_argv);
+  *ret_argv_addr = launcher_argv;
+}
 
+void launcher_setup_argv_from_prefs(void) {
+  char *preferred_shell;
+
+  preferred_shell = get_preferred_shell();
+  if (preferred_shell == NULL) {
+    preferred_shell = strdup(DEFAULT_SHELL);
+  }
+  cmd = preferred_shell; /* See launcher_setup_argv */
+  setup_login_shell_argv(cmd, launcher_argv);
   *ret_argv_addr = launcher_argv;
 }
 
@@ -166,6 +298,8 @@ static void launcher_add_tooltips(HWND hwnd) {
       "32-bit shell, for running and building native apps.");
   launcher_add_tooltip_to_window_by_id(hwnd, IDD_MINGW64_BTN,
       "64-bit shell, for running and building native apps.");
+  launcher_add_tooltip_to_window_by_id(hwnd, IDD_DEDICATED,
+      "Use a separate Taskbar item, and do not pop up this dialog in new windows.");
 }
 
 static void add_line_to_combo_box(HWND hwnd, const char *text) {
@@ -218,13 +352,13 @@ static void launcher_add_shells(HWND dialog) {
   size_t i;
   ssize_t j;
   FILE *f;
-  char line[1024];
-  char *s, *xdg_shell;
+  char line[LINELEN];
+  char *s;
   char *preferred_shell = NULL;
 
   f = fopen("/etc/shells", "r");
   if (!f) {
-    shells[0] = strdup("/usr/bin/sh");
+    shells[0] = strdup(DEFAULT_SHELL);
     shells_n = 1;
   } else {
     for (;;) {
@@ -245,20 +379,9 @@ static void launcher_add_shells(HWND dialog) {
     add_line_to_combo_box(etc_shells, shells[i]);
   }
 
-  xdg_shell = get_preferred_shell_config_path();
-  f = fopen(xdg_shell, "r");
-  if (f != NULL) {
-    for (;;) {
-      s = fgets_nonempty_noncomment_line(line, sizeof line, f);
-      if (s == NULL) { break; }
-      preferred_shell = strdup(s);
-      break;
-    }
-    fclose(f);
-  }
-  free(xdg_shell);
-
   j = -1;
+
+  preferred_shell = get_preferred_shell();
   if (preferred_shell) {
     j = find_shell_match(preferred_shell);
     if (j < 0) {
@@ -272,11 +395,8 @@ static void launcher_add_shells(HWND dialog) {
     free(preferred_shell);
   }
 
-  const char* default_shells[] = {
-    "bin/bash", "bash", "bin/sh", "sh", NULL
-  };
   const char **dflt_sh;
-  for (dflt_sh = default_shells; (j < 0) && (*dflt_sh != NULL); dflt_sh++) {
+  for (dflt_sh = default_preferred_shells; (j < 0) && (*dflt_sh != NULL); dflt_sh++) {
     j = find_shell_match(*dflt_sh);
   }
 
@@ -303,6 +423,7 @@ INT_PTR CALLBACK launcher_dlgproc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lP
     case IDD_MINGW32_BTN:
     case IDD_MINGW64_BTN:
       selected_exe = SendMessage(etc_shells, CB_GETCURSEL, 0, 0);
+      launcher_do_dedicated_window = IsDlgButtonChecked(hwnd, IDD_DEDICATED);
       DestroyWindow(hwnd);
       selected_btn = LOWORD(wParam);
       return TRUE;

@@ -72,6 +72,8 @@ version := \
   $(shell echo $(shell echo VERSION | cpp -P $(CPPFLAGS) --include appinfo.h))
 name_ver := $(NAME)-$(version)
 
+QUIET_OK = 2>/dev/null || true
+
 #############################################################################
 # compilation parameters
 
@@ -126,27 +128,61 @@ $(BINDIR)/term%.o: term%.c
 $(BINDIR)/%.o: %.c
 	$(CC) -c $(DEPOPT) $(CPPFLAGS) $(CCFLAGS) -fstack-check $< -o $(BINDIR)/$*.o
 
-$(BINDIR)/%.o: %.rc %.h %.mft
-	$(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED $(DEPOPT) $(CPPFLAGS)' $< $(BINDIR)/$*.o
-	-mv $*.d $(BINDIR)/
+ifeq ($(MAINLIB_VER),)
+  MAINLIB_VER := 0
+endif
 
-exe := $(NAME).exe
+MAINLIB = msys-mintty-$(MAINLIB_VER).dll
+
+exe := $(MAINLIB) $(NAME).exe $(NAME)-as-msys2.exe \
+  $(NAME)-as-mingw32.exe $(NAME)-as-mingw64.exe
 exe: $(exe)
-$(exe): $(objs)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-	#-du -b $@
 
-bin := $(BINDIR)/$(NAME).exe
-bin: $(BINDIR) $(bin)
+$(MAINLIB): $(objs)
+	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+link_exe = $(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
+compile_c = $(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
+compile_res_rc1 = cd $(@D) && $(RC) -c 65001 --preprocessor '$(CC) -E -xc
+compile_res_rc2 = -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
+
+$(NAME).exe: ../main.o ../res.o $(MAINLIB)
+	$(link_exe)
+$(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
+	$(link_exe)
+$(NAME)-as-mingw32.exe: ../main-mingw32.o ../res-mingw32.o $(MAINLIB)
+	$(link_exe)
+$(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-mingw64.o $(MAINLIB)
+	$(link_exe)
+
+../main.o: ../main.c
+	$(compile_c)
+../main-msys2.o: ../main.c
+	$(compile_c) -DMINTTY_AS_MSYS2
+../main-mingw32.o: ../main.c
+	$(compile_c) -DMINTTY_AS_MINGW32
+../main-mingw64.o: ../main.c
+	$(compile_c) -DMINTTY_AS_MINGW64
+
+../res.o: ../res.rc res.h ../res.mft
+	$(compile_res_rc1) $(compile_res_rc2)
+../res-msys2.o: ../res.rc res.h ../res.mft
+	$(compile_res_rc1) -DMINTTY_AS_MSYS2 $(compile_res_rc2)
+../res-mingw32.o: ../res.rc res.h ../res.mft
+	$(compile_res_rc1) -DMINTTY_AS_MINGW32 $(compile_res_rc2)
+../res-mingw64.o: ../res.rc res.h ../res.mft
+	$(compile_res_rc1) -DMINTTY_AS_MINGW64 $(compile_res_rc2)
+
+bin := $(addprefix $(BINDIR)/, $(exe))
+bin: $(BINDIR) $(BINDIR)/$(NAME).exe
+
 $(BINDIR):
 	mkdir -p $(BINDIR)
-$(bin): $(bins)
-	$(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
-	cp -f $@ $(BINFOLDER)/		# for 'dobin' install in .cygport
-	# support simpler debugging:
-	-test -f `basename $@` && cp -fp $@ ./ || true
-	# report size of exe:
-	#-type du && du -b $@ || true
+
+$(BINDIR)/$(NAME).exe: $(exe) $(BINDIR)
+	cp -f $(exe) $(BINDIR)/
+	cp -f $(bin) $(BINFOLDER)/		# for 'dobin' install in .cygport
+	-test -f `basename $@` && cp -fp $(bin) ./ || true
 
 #-include $(wildcard *.d)
 -include $(wildcard $(BINDIR)/*.d)
@@ -244,8 +280,9 @@ $(html): ../docs/$(NAME).1
 	groff -t -man -Thtml $< > $@
 
 clean:
-	#rm -rf *.d *.o $(NAME)*
-	rm -rf $(BINDIR)/*.d $(BINDIR)/*.o $(BINDIR)/$(NAME)*
+	rm -rf *.d *.o $(NAME)* $(QUIET_OK)
+	rm -rf ../*.d ../*.o ../$(NAME)* $(QUIET_OK)
+	rm -rf $(BINDIR)/*.d $(BINDIR)/*.o $(BINDIR)/$(NAME)* $(QUIET_OK)
 
 check:	checksrc checkresource checkloc
 

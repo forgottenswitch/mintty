@@ -1,0 +1,2 @@
+If you want to test MSYS2 mintty "in-place", inside the /usr/bin, then also
+copy the msys-mintty-0.dll alongside the executable(s).
