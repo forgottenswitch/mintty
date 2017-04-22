@@ -174,16 +174,15 @@ $(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-mingw64.o $(MAINLIB)
 	$(compile_res_rc1) -DMINTTY_AS_MINGW64 $(compile_res_rc2)
 
 bin := $(addprefix $(BINDIR)/, $(exe))
-bin: $(BINDIR) $(bin)
+bin: $(BINDIR) $(BINDIR)/$(NAME).exe
+
 $(BINDIR):
 	mkdir -p $(BINDIR)
-$(bin): $(exe)
-	cp -f $^ $(BINDIR)/
-	cp -f $@ $(BINFOLDER)/		# for 'dobin' install in .cygport
-	# support simpler debugging:
-	-test -f `basename $@` && cp -fp $@ ./ || true
-	# report size of exe:
-	#-type du && du -b $@ || true
+
+$(BINDIR)/$(NAME).exe: $(exe) $(BINDIR)
+	cp -f $(exe) $(BINDIR)/
+	cp -f $(bin) $(BINFOLDER)/		# for 'dobin' install in .cygport
+	-test -f `basename $@` && cp -fp $(bin) ./ || true
 
 #-include $(wildcard *.d)
 -include $(wildcard $(BINDIR)/*.d)
