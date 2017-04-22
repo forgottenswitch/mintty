@@ -141,7 +141,7 @@ exe: $(exe)
 $(MAINLIB): $(objs)
 	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
 
-link_exe = $(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
+link_exe = $(CC) $(LDFLAGS) $^ $(LDLIBS) -o $@
 compile_c = $(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
 compile_res_rc1 = cd $(@D) && $(RC) -c 65001 --preprocessor '$(CC) -E -xc
 compile_res_rc2 = -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
