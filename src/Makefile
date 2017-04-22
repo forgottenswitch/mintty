@@ -141,45 +141,37 @@ exe: $(exe)
 $(MAINLIB): $(objs)
 	$(CC) -shared $(LDFLAGS) $^ $(LDLIBS) -o $@
 
+link_exe = $(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
+compile_c = $(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
+compile_res_rc1 = cd $(@D) && $(RC) -c 65001 --preprocessor '$(CC) -E -xc
+compile_res_rc2 = -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
+
 $(NAME).exe: ../main.o ../res.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
-
+	$(link_exe)
 $(NAME)-as-msys2.exe: ../main-msys2.o ../res-msys2.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
-
+	$(link_exe)
 $(NAME)-as-mingw32.exe: ../main-mingw32.o ../res-mingw32.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
-
+	$(link_exe)
 $(NAME)-as-mingw64.exe: ../main-mingw64.o ../res-mingw64.o $(MAINLIB)
-	$(CC) $(LDFLAGS) $^ $(MAINLIB) $(LDLIBS) -o $@
+	$(link_exe)
 
 ../main.o: ../main.c
-	$(CC) -c $(CPPFLAGS) $(CCFLAGS) $< -o $@
-
+	$(compile_c)
 ../main-msys2.o: ../main.c
-	$(CC) -c -DMINTTY_AS_MSYS2 $(CPPFLAGS) $(CCFLAGS) $< -o $@
-
+	$(compile_c) -DMINTTY_AS_MSYS2
 ../main-mingw32.o: ../main.c
-	$(CC) -c -DMINTTY_AS_MINGW32 $(CPPFLAGS) $(CCFLAGS) $< -o $@
-
+	$(compile_c) -DMINTTY_AS_MINGW32
 ../main-mingw64.o: ../main.c
-	$(CC) -c -DMINTTY_AS_MINGW64 $(CPPFLAGS) $(CCFLAGS) $< -o $@
+	$(compile_c) -DMINTTY_AS_MINGW64
 
 ../res.o: ../res.rc res.h ../res.mft
-	cd $(@D) && \
-	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -I./src $(CPPFLAGS)' res.rc $(@F)
-
+	$(compile_res_rc1) $(compile_res_rc2)
 ../res-msys2.o: ../res.rc res.h ../res.mft
-	cd $(@D) && \
-	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MSYS2 -I./src $(CPPFLAGS)' res.rc $(@F)
-
+	$(compile_res_rc1) -DMINTTY_AS_MSYS2 $(compile_res_rc2)
 ../res-mingw32.o: ../res.rc res.h ../res.mft
-	cd $(@D) && \
-	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MINGW32 -I./src $(CPPFLAGS)' res.rc $(@F)
-
+	$(compile_res_rc1) -DMINTTY_AS_MINGW32 $(compile_res_rc2)
 ../res-mingw64.o: ../res.rc res.h ../res.mft
-	cd $(@D) && \
-	  $(RC) -c 65001 --preprocessor '$(CC) -E -xc -DRC_INVOKED -DMINTTY_AS_MINGW64 -I./src $(CPPFLAGS)' res.rc $(@F)
+	$(compile_res_rc1) -DMINTTY_AS_MINGW64 $(compile_res_rc2)
 
 bin := $(addprefix $(BINDIR)/, $(exe))
 bin: $(BINDIR) $(bin)
