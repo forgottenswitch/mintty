@@ -132,7 +132,7 @@ ifeq ($(MAINLIB_VER),)
   MAINLIB_VER := 0
 endif
 
-MAINLIB = msys-mintty-$(MAINLIB_VER).dll
+MAINLIB = msys-mintty-m2l-$(MAINLIB_VER).dll
 
 exe := $(MAINLIB) $(NAME).exe $(NAME)-as-msys2.exe \
   $(NAME)-as-mingw32.exe $(NAME)-as-mingw64.exe
@@ -188,6 +188,24 @@ $(BINDIR)/$(NAME).exe: $(exe) $(BINDIR)
 -include $(wildcard $(BINDIR)/*.d)
 
 #############################################################################
+# install
+
+INSTALL = install
+
+install: $(bin)
+	mkdir -p $(DESTDIR)/usr/bin/
+	$(INSTALL) -t $(DESTDIR)/usr/bin/ $(MAINLIB)
+	for b in $(bin) ; do \
+	  if test _"$${b%$(NAME).exe}" != _"$$b"; then \
+	    $(INSTALL) -T "$$b" $(DESTDIR)/usr/bin/$(NAME)-m2l.exe ;\
+	  else \
+	    $(INSTALL) -t $(DESTDIR)/usr/bin/ "$$b" ;\
+	  fi ; \
+	done
+
+.PHONY: install
+
+##############################################################################
 # generate
 
 #WGET=curl -R -O --connect-timeout 55

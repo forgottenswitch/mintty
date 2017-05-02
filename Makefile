@@ -118,3 +118,7 @@ announcement:
 	echo ------ >> $(announcement)
 	echo Thomas >> $(announcement)
 
+install:
+	$(MAKE) -C src $@
+.PHONY: install
+

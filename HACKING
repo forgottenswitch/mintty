@@ -1,4 +1,4 @@
-If you want to test MSYS2 mintty "in-place", inside the /usr/bin, then also
-copy the msys-mintty-0.dll alongside the executable(s).
+Doing "make install" puts mintty-m2l.exe binary into /usr/bin.
+This is intended for testing, so as not to clash with mintty.exe.
 
 The file docs/mintty.1.html is generated with "make html" command.
